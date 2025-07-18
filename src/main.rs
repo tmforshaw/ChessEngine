@@ -18,9 +18,7 @@ fn board_move_test() {
     let mut board = Board::default();
 
     board.apply_move(PieceMove::from_algebraic("e2e4").unwrap());
-    println!("{}\n", board.positions);
     board.undo_move();
-    println!("{}\n", board.positions);
 
     assert!(board.positions == Board::default().positions);
 }
@@ -31,11 +29,8 @@ pub fn respond_to_uci() {
 
     let mut board = None;
 
-    let lines = "uci\nposition startpos moves e2e4 e7e5\ngo".lines();
-
-    for line in lines {
-        // stdin.lock().lines() {
-        // let line = line.unwrap();
+    for line in stdin.lock().lines() {
+        let line = line.unwrap();
         let tokens: Vec<_> = line.split_whitespace().collect();
         if tokens.is_empty() {
             continue;
@@ -120,7 +115,6 @@ pub fn handle_moves_uci(board: &mut Board, moves: &[&str]) {
 
     for piece_move in moves {
         board.apply_move(piece_move);
-        println!("{}\n", board.positions);
     }
 }
 
