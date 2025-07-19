@@ -18,6 +18,7 @@ pub const fn piece_to_value(piece: Piece) -> i32 {
 #[must_use]
 pub fn material(board: &Board, player: Player) -> i32 {
     board
+        .positions
         .get_all_player_pieces(player)
         .into_iter()
         .map(|(piece, _)| piece)

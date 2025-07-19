@@ -16,6 +16,8 @@ pub mod evaluation;
 const ENGINE_NAME: &str = "tmforshaw_engine";
 const AUTHOR_NAME: &str = "tmforshaw";
 
+const SEARCH_DEPTH: i32 = 4;
+
 fn main() {
     respond_to_uci();
 }
@@ -144,11 +146,9 @@ pub fn handle_go_uci(board: &mut Board) -> Option<PieceMove> {
     let mut best_move = None;
     let mut best_score = i32::MIN;
 
-    let search_depth = 3;
-
     for piece_move in board.get_all_possible_moves(board.get_player()) {
         board.apply_move(piece_move);
-        let score = alpha_beta(board, search_depth - 1, i32::MIN, i32::MAX, false);
+        let score = alpha_beta(board, SEARCH_DEPTH - 1, i32::MIN, i32::MAX, false);
         board.undo_move();
 
         if score > best_score {
