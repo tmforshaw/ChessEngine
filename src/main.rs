@@ -1,3 +1,10 @@
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![warn(clippy::unwrap_used)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::cast_possible_truncation)]
+
 use std::io::{self, BufRead, Write};
 
 use chess_core::{board::Board, piece_move::PieceMove};
@@ -17,12 +24,18 @@ fn main() {
 fn board_move_test() {
     let mut board = Board::default();
 
-    board.apply_move(PieceMove::from_algebraic("e2e4").unwrap());
+    board.apply_move(
+        PieceMove::from_algebraic("e2e4").expect("Could not turn algebraic into PieceMove"),
+    );
     board.undo_move();
 
     assert!(board.positions == Board::default().positions);
 }
 
+/// # Panics
+/// Line can't be found in ``stdin.lines()``
+/// Best move can't be converted into algebraic
+/// ``Stdout`` can't be written to
 pub fn respond_to_uci() {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
@@ -30,7 +43,7 @@ pub fn respond_to_uci() {
     let mut board = None;
 
     for line in stdin.lock().lines() {
-        let line = line.unwrap();
+        let line = line.expect("Could not find line in stdin.lines()");
         let tokens: Vec<_> = line.split_whitespace().collect();
         if tokens.is_empty() {
             continue;
@@ -55,11 +68,16 @@ pub fn respond_to_uci() {
                 }
 
                 match best_move {
-                    Some(best_move) => {
-                        writeln!(stdout, "bestmove {}", best_move.to_algebraic().unwrap()).unwrap()
-                    }
+                    Some(best_move) => writeln!(
+                        stdout,
+                        "bestmove {}",
+                        best_move
+                            .to_algebraic()
+                            .expect("Could not convert best move into algebraic")
+                    )
+                    .expect("Could not write best move to stdin"),
                     None => todo!(),
-                };
+                }
             }
             "quit" => {
                 break;
@@ -69,16 +87,20 @@ pub fn respond_to_uci() {
             }
         }
 
-        stdout.flush().unwrap();
+        stdout.flush().expect("Could not flush stdin");
     }
 }
 
+/// # Panics
+/// If board can't be created from fen
+/// If an unknown command is given instead of ``startpos`` or ``fen``
+#[must_use]
 pub fn handle_position_uci(tokens: &[&str]) -> Option<Board> {
     match tokens[0] {
         "fen" => {
             let fen_string = tokens[1];
 
-            let mut board = Board::from_fen(fen_string).unwrap();
+            let mut board = Board::from_fen(fen_string).expect("Could not create Board from FEN");
 
             if let Some(&moves_keyword) = tokens.get(2) {
                 if moves_keyword == "moves" {
