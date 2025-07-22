@@ -26,12 +26,14 @@ fn main() {
 fn board_move_test() {
     let mut board = Board::default();
 
-    board.apply_move(
-        PieceMove::from_algebraic("e2e4").expect("Could not turn algebraic into PieceMove"),
-    );
-    board.undo_move();
+    board.apply_move(PieceMove::from_algebraic("e2e4").expect("Could not turn algebraic into PieceMove"));
 
-    assert!(board.positions == Board::default().positions);
+    let Some(history_move) = board.move_history.traverse_prev() else {
+        panic!("Could not undo move")
+    };
+    board.undo_move(history_move);
+
+    assert!(board == Board::default());
 }
 
 /// # Panics
@@ -73,9 +75,7 @@ pub fn respond_to_uci() {
                     Some(best_move) => writeln!(
                         stdout,
                         "bestmove {}",
-                        best_move
-                            .to_algebraic()
-                            .expect("Could not convert best move into algebraic")
+                        best_move.to_algebraic().expect("Could not convert best move into algebraic")
                     )
                     .expect("Could not write best move to stdin"),
                     None => todo!(),
@@ -142,14 +142,20 @@ pub fn handle_moves_uci(board: &mut Board, moves: &[&str]) {
     }
 }
 
+/// # Panics
+/// Panics if the history move can't be found to undo a move
 pub fn handle_go_uci(board: &mut Board) -> Option<PieceMove> {
     let mut best_move = None;
     let mut best_score = i32::MIN;
 
-    for piece_move in board.positions.get_all_possible_moves(board.get_player()) {
+    for piece_move in board.get_all_possible_moves(board.get_player()) {
         board.apply_move(piece_move);
         let score = alpha_beta(board, SEARCH_DEPTH - 1, i32::MIN, i32::MAX, false);
-        board.undo_move();
+
+        let Some(history_move) = board.move_history.traverse_prev() else {
+            panic!("Could not undo move")
+        };
+        board.undo_move(history_move);
 
         if score > best_score {
             best_score = score;
@@ -160,25 +166,24 @@ pub fn handle_go_uci(board: &mut Board) -> Option<PieceMove> {
     best_move
 }
 
-pub fn alpha_beta(
-    board: &mut Board,
-    depth: i32,
-    mut alpha: i32,
-    mut beta: i32,
-    maximising: bool,
-) -> i32 {
-    if depth <= 0 || board.positions.has_game_ended().is_some() {
+/// # Panics
+/// Panics if history move can't be found to undo move
+pub fn alpha_beta(board: &mut Board, depth: i32, mut alpha: i32, mut beta: i32, maximising: bool) -> i32 {
+    if depth <= 0 || board.has_game_ended().is_some() {
         return evaluate(board);
     }
 
     let mut best_score = if maximising { i32::MIN } else { i32::MAX };
 
-    for piece_move in board.positions.get_all_possible_moves(board.get_player()) {
+    for piece_move in board.get_all_possible_moves(board.get_player()) {
         board.apply_move(piece_move);
 
         let score = alpha_beta(board, depth - 1, alpha, beta, !maximising);
 
-        board.undo_move();
+        let Some(history_move) = board.move_history.traverse_prev() else {
+            panic!("Could not undo move")
+        };
+        board.undo_move(history_move);
 
         if maximising {
             best_score = best_score.max(score);
